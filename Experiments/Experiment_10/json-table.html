@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>JSON to Dynamic Table</title>
+  <title>Indian Student Directory</title>
   <!-- jQuery CDN included for $.getJSON functionality -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <style>
@@ -15,14 +15,14 @@
 </head>
 <body>
 
-  <h2>Load JSON into Table</h2>
+  <h2>Indian Student Directory</h2>
   <button onclick="loadWithFetch()">Load using fetch()</button>
   <button onclick="loadWithJQuery()">Load using $.getJSON()</button>
 
   <table>
     <thead>
       <tr>
-        <th>ID</th>
+        <th>Student ID</th>
         <th>Name</th>
         <th>Email</th>
       </tr>
@@ -33,41 +33,49 @@
   </table>
 
   <script>
-    const apiUrl = 'https://jsonplaceholder.typicode.com/users';
+    // Indian student data with IDs starting from 101
+    const studentData = [
+      { id: 101, name: "Aarav Sharma", email: "aarav.sharma@example.in" },
+      { id: 102, name: "Ananya Patel", email: "ananya.patel@example.in" },
+      { id: 103, name: "Rohan Verma", email: "rohan.verma@example.in" },
+      { id: 104, name: "Priya Iyer", email: "priya.iyer@example.in" },
+      { id: 105, name: "Aditya Kulkarni", email: "aditya.kulkarni@example.in" },
+      { id: 106, name: "Diya Nair", email: "diya.nair@example.in" }
+    ];
 
     // Helper function to build and inject rows
     function renderRows(data) {
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = ''; // Clear table
       
-      data.forEach(user => {
+      data.forEach(student => {
         const row = `<tr>
-          <td>${user.id}</td>
-          <td>${user.name}</td>
-          <td>${user.email}</td>
+          <td>${student.id}</td>
+          <td>${student.name}</td>
+          <td>${student.email}</td>
         </tr>`;
         tbody.innerHTML += row;
       });
     }
 
-    // 1. Vanilla JS fetch() implementation
-    async function loadWithFetch() {
-      try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        renderRows(data);
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
+    // 1. fetch() simulation using a Promise
+    function loadWithFetch() {
+      // Simulating a fetch API request with a resolved Promise
+      Promise.resolve(studentData)
+        .then(data => renderRows(data))
+        .catch(err => console.error('Fetch error:', err));
     }
 
-    // 2. jQuery $.getJSON() implementation
+    // 2. jQuery simulation using Deferred object
     function loadWithJQuery() {
-      $.getJSON(apiUrl, function(data) {
-        renderRows(data);
-      }).fail(function(err) {
-        console.error('jQuery error:', err);
-      });
+      // Simulating $.getJSON with a jQuery Deferred object
+      $.Deferred().resolve(studentData)
+        .done(function(data) {
+          renderRows(data);
+        })
+        .fail(function(err) {
+          console.error('jQuery error:', err);
+        });
     }
   </script>
 

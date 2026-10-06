@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseHub - Live Interactive Task & Project Workspace</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f5ff',
+              100: '#e0ebff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- jQuery CDN -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- jQuery UI CDN (for Drag & Drop) -->
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.3);
+      border-radius: 9999px;
+    }
+    .kanban-column-drop-active {
+      background-color: rgba(59, 130, 246, 0.08);
+      border-style: dashed;
+    }
+    .ui-sortable-placeholder {
+      border: 2px dashed #60a5fa;
+      background-color: rgba(96, 165, 250, 0.1);
+      visibility: visible !important;
+      border-radius: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .task-card-dragging {
+      opacity: 0.8;
+      transform: scale(1.02) rotate(1deg);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+      cursor: grabbing !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100 [&:not(.dark)]:bg-slate-50 [&:not(.dark)]:text-slate-900">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/90 dark:bg-slate-900/90 [&:not(.dark)]:bg-white/90 backdrop-blur-md border-b border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Logo & Brand -->
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+          <i class="fa-solid fa-bolt text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">PulseHub</h1>
+          <p class="text-[11px] text-slate-400 [&:not(.dark)]:text-slate-500 hidden sm:block">Live Workspace & Agile Dashboard</p>
+        </div>
+      </div>
+
+      <!-- Live Clock & Weather Widget -->
+      <div class="hidden lg:flex items-center space-x-6 border-x border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 px-6 py-1">
+        <!-- Live Clock -->
+        <div class="flex flex-col items-end">
+          <span id="header-clock-date" class="text-xs text-slate-400 [&:not(.dark)]:text-slate-500 font-medium">---, -- --- ----</span>
+          <span id="header-clock-time" class="font-mono-code text-xs font-bold text-blue-400 tracking-wider">00:00:00 AM</span>
+        </div>
+
+        <!-- Weather Mini Badge -->
+        <div id="weather-badge" class="flex items-center gap-2.5 bg-slate-800/60 dark:bg-slate-800/60 [&:not(.dark)]:bg-slate-100 border border-slate-700/50 dark:border-slate-700/50 [&:not(.dark)]:border-slate-300 rounded-lg px-3 py-1.5 text-xs">
+          <i id="weather-icon" class="fa-solid fa-cloud-sun text-amber-400 text-sm"></i>
+          <div class="flex flex-col">
+            <span id="weather-temp" class="font-bold">24°C</span>
+            <span id="weather-desc" class="text-[10px] text-slate-400">Loading Weather...</span>
+          </div>
+          <button id="btn-refresh-weather" class="text-slate-400 hover:text-blue-400 transition-colors ml-1" title="Refresh Weather">
+            <i class="fa-solid fa-arrows-rotate text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-3">
+        <!-- Theme Toggle -->
+        <button id="btn-toggle-theme" class="p-2.5 rounded-xl bg-slate-800 dark:bg-slate-800 [&:not(.dark)]:bg-slate-200 text-slate-300 [&:not(.dark)]:text-slate-700 hover:text-white transition-all">
+          <i class="fa-solid fa-moon text-sm dark:block hidden"></i>
+          <i class="fa-solid fa-sun text-sm dark:hidden block text-amber-500"></i>
+        </button>
+
+        <!-- Export JSON -->
+        <button id="btn-export-data" class="hidden sm:inline-flex items-center gap-1.5 bg-slate-800 dark:bg-slate-800 [&:not(.dark)]:bg-slate-200 text-slate-200 [&:not(.dark)]:text-slate-800 hover:bg-slate-700 text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
+          <i class="fa-solid fa-download text-xs"></i>
+          <span>Export</span>
+        </button>
+
+        <!-- Add Task Button -->
+        <button id="btn-open-create-modal" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl transition-all shadow-md shadow-blue-600/25">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>New Task</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Application Body -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Section 1: Dynamic Quotes Banner & Live Stats Cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      
+      <!-- Dynamic AJAX Quote Banner -->
+      <div class="lg:col-span-7 bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-quote-left"></i>
+            Daily Dynamic Inspiration
+          </span>
+          <button id="btn-fetch-quote" class="text-xs text-slate-400 hover:text-blue-400 transition-colors flex items-center gap-1">
+            <i class="fa-solid fa-rotate text-xs"></i>
+            <span>Refresh Quote</span>
+          </button>
+        </div>
+
+        <div id="quote-container" class="my-2 min-h-[50px] flex flex-col justify-center">
+          <p id="quote-text" class="text-sm font-medium italic text-slate-200 [&:not(.dark)]:text-slate-700 leading-relaxed">
+            "Loading inspirational thought for your workspace..."
+          </p>
+          <p id="quote-author" class="text-xs text-blue-400 font-semibold mt-2 text-right">— PulseHub</p>
+        </div>
+
+        <!-- AJAX Spinner Overlay -->
+        <div id="quote-spinner" class="hidden absolute inset-0 bg-slate-900/80 dark:bg-slate-900/80 [&:not(.dark)]:bg-white/80 backdrop-blur-sm flex items-center justify-center">
+          <i class="fa-solid fa-circle-notch fa-spin text-blue-500 text-2xl"></i>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="lg:col-span-5 grid grid-cols-3 gap-3">
+        <!-- Total Tasks -->
+        <div class="bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-md">
+          <div class="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center mb-1.5">
+            <i class="fa-solid fa-list-check text-sm"></i>
+          </div>
+          <span id="metric-total" class="font-mono-code text-2xl font-extrabold text-slate-100 [&:not(.dark)]:text-slate-800">0</span>
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">Total Tasks</span>
+        </div>
+
+        <!-- In Progress -->
+        <div class="bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-md">
+          <div class="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-1.5">
+            <i class="fa-solid fa-spinner text-sm animate-spin"></i>
+          </div>
+          <span id="metric-progress" class="font-mono-code text-2xl font-extrabold text-amber-400">0</span>
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">In Progress</span>
+        </div>
+
+        <!-- Completed -->
+        <div class="bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-md">
+          <div class="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1.5">
+            <i class="fa-solid fa-check-double text-sm"></i>
+          </div>
+          <span id="metric-completed" class="font-mono-code text-2xl font-extrabold text-emerald-400">0</span>
+          <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mt-0.5">Completed</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Section 2: Analytics Chart & Dynamic Tech Feed -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- Analytics Chart -->
+      <div class="lg:col-span-8 bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold text-slate-200 [&:not(.dark)]:text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-blue-400"></i>
+            <span>Project Distribution & Status Breakdown</span>
+          </h3>
+          <span class="text-[11px] text-slate-400">Live Updating</span>
+        </div>
+        <div class="h-48 relative w-full flex items-center justify-center">
+          <canvas id="analyticsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- AJAX Tech Feed Widget -->
+      <div class="lg:col-span-4 bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-bold text-slate-200 [&:not(.dark)]:text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-rss text-indigo-400"></i>
+            <span>Live Tech Feed Updates</span>
+          </h3>
+          <button id="btn-fetch-news" class="text-xs text-slate-400 hover:text-blue-400 transition-colors" title="Reload Feed">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+        </div>
+
+        <div id="tech-news-list" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs">
+          <!-- Dynamically populated via jQuery AJAX -->
+          <div class="p-2 rounded-lg bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-100 animate-pulse flex items-center justify-center text-slate-500">
+            <span>Fetching live feed items...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Toolbar (Search, Filter, Reset) -->
+    <section class="bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 shadow-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        <input type="text" id="filter-search" placeholder="Search task title, description, or tags..." class="w-full bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all" />
+      </div>
+
+      <!-- Filters -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Priority Filter -->
+        <select id="filter-priority" class="bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 text-slate-200 dark:text-slate-200 [&:not(.dark)]:text-slate-800 text-xs sm:text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
+          <option value="ALL">All Priorities</option>
+          <option value="HIGH">High Priority</option>
+          <option value="MEDIUM">Medium Priority</option>
+          <option value="LOW">Low Priority</option>
+        </select>
+
+        <!-- Category Filter -->
+        <select id="filter-category" class="bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 text-slate-200 dark:text-slate-200 [&:not(.dark)]:text-slate-800 text-xs sm:text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
+          <option value="ALL">All Categories</option>
+          <option value="Feature">Feature</option>
+          <option value="Bugfix">Bugfix</option>
+          <option value="Design">Design</option>
+          <option value="Documentation">Documentation</option>
+        </select>
+
+        <!-- Reset Button -->
+        <button id="btn-reset-filters" class="p-2 text-slate-400 hover:text-slate-200 bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-100 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 rounded-xl transition-colors" title="Reset Filters">
+          <i class="fa-solid fa-rotate-left text-sm"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 4: Interactive Kanban Drag & Drop Board -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Column: TODO -->
+      <div class="bg-slate-900/60 dark:bg-slate-900/60 [&:not(.dark)]:bg-slate-100/80 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-center justify-between mb-4 px-1">
+          <div class="flex items-center gap-2">
+            <span class="h-2.5 w-2.5 rounded-full bg-slate-400"></span>
+            <h3 class="text-sm font-bold text-slate-200 [&:not(.dark)]:text-slate-800">To Do</h3>
+            <span id="badge-todo-count" class="text-xs bg-slate-800 dark:bg-slate-800 [&:not(.dark)]:bg-slate-200 text-slate-400 px-2 py-0.5 rounded-full font-mono-code font-bold">0</span>
+          </div>
+        </div>
+        <div id="column-todo" data-status="TODO" class="kanban-column flex-1 min-h-[350px] space-y-3 p-1">
+          <!-- Dynamically populated via jQuery -->
+        </div>
+      </div>
+
+      <!-- Column: IN_PROGRESS -->
+      <div class="bg-slate-900/60 dark:bg-slate-900/60 [&:not(.dark)]:bg-slate-100/80 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-center justify-between mb-4 px-1">
+          <div class="flex items-center gap-2">
+            <span class="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+            <h3 class="text-sm font-bold text-slate-200 [&:not(.dark)]:text-slate-800">In Progress</h3>
+            <span id="badge-progress-count" class="text-xs bg-slate-800 dark:bg-slate-800 [&:not(.dark)]:bg-slate-200 text-amber-400 px-2 py-0.5 rounded-full font-mono-code font-bold">0</span>
+          </div>
+        </div>
+        <div id="column-progress" data-status="IN_PROGRESS" class="kanban-column flex-1 min-h-[350px] space-y-3 p-1">
+          <!-- Dynamically populated via jQuery -->
+        </div>
+      </div>
+
+      <!-- Column: COMPLETED -->
+      <div class="bg-slate-900/60 dark:bg-slate-900/60 [&:not(.dark)]:bg-slate-100/80 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-center justify-between mb-4 px-1">
+          <div class="flex items-center gap-2">
+            <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+            <h3 class="text-sm font-bold text-slate-200 [&:not(.dark)]:text-slate-800">Completed</h3>
+            <span id="badge-completed-count" class="text-xs bg-slate-800 dark:bg-slate-800 [&:not(.dark)]:bg-slate-200 text-emerald-400 px-2 py-0.5 rounded-full font-mono-code font-bold">0</span>
+          </div>
+        </div>
+        <div id="column-completed" data-status="COMPLETED" class="kanban-column flex-1 min-h-[350px] space-y-3 p-1">
+          <!-- Dynamically populated via jQuery -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Section 5: Real-Time Activity Audit Log -->
+    <section class="bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 rounded-2xl p-5 shadow-lg">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-slate-200 [&:not(.dark)]:text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-blue-400"></i>
+          <span>Real-Time Activity Log</span>
+        </h3>
+        <button id="btn-clear-log" class="text-xs text-slate-400 hover:text-rose-400 transition-colors">Clear Log</button>
+      </div>
+
+      <div id="activity-log-list" class="max-h-36 overflow-y-auto space-y-2 pr-2 font-mono-code text-xs">
+        <!-- Log entries populated dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Create/Edit Task Modal Dialog -->
+  <div id="task-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-200 p-4">
+    <div id="task-modal-box" class="bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden transform scale-95 transition-all duration-200">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 flex items-center justify-between">
+        <h3 id="modal-task-title" class="text-base font-bold text-slate-100 [&:not(.dark)]:text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-square-plus text-blue-400"></i>
+          <span>Create New Task</span>
+        </h3>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-white dark:hover:text-white [&:not(.dark)]:hover:text-slate-800 p-1 rounded-lg transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="task-form" class="p-6 space-y-4">
+        <input type="hidden" id="form-task-id" value="" />
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1" for="form-title">Task Title *</label>
+          <input type="text" id="form-title" required placeholder="e.g. Implement OAuth2 Login Flow" class="w-full bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 focus:outline-none focus:border-blue-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1" for="form-desc">Description</label>
+          <textarea id="form-desc" rows="3" placeholder="Add technical details or instructions..." class="w-full bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 focus:outline-none focus:border-blue-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1" for="form-priority">Priority *</label>
+            <select id="form-priority" required class="w-full bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <option value="HIGH">High</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1" for="form-category">Category *</label>
+            <select id="form-category" required class="w-full bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <option value="Feature">Feature</option>
+              <option value="Bugfix">Bugfix</option>
+              <option value="Design">Design</option>
+              <option value="Documentation">Documentation</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1" for="form-status">Status *</label>
+            <select id="form-status" required class="w-full bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-50 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-300 text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+              <option value="TODO">To Do</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 flex items-center justify-end gap-3">
+          <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 rounded-xl transition-colors">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md transition-all">
+            Save Task
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"></div>
+
+  <script>
+    $(document).ready(function () {
+
+      // CONSTANTS & INITIAL STORAGE KEYS
+      const STORAGE_KEY_TASKS = 'pulsehub_tasks_v1';
+      const STORAGE_KEY_LOGS = 'pulsehub_logs_v1';
+      const STORAGE_KEY_THEME = 'pulsehub_theme_v1';
+
+      // Seed Data
+      const defaultTasks = [
+        {
+          id: '101',
+          title: 'Integrate Real-Time WebSocket Alerts',
+          desc: 'Establish persistent socket channel for client notifications.',
+          priority: 'HIGH',
+          category: 'Feature',
+          status: 'IN_PROGRESS',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: '102',
+          title: 'Refactor Tailwind Design Tokens',
+          desc: 'Ensure consistent color mapping across dark/light modes.',
+          priority: 'MEDIUM',
+          category: 'Design',
+          status: 'TODO',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: '103',
+          title: 'Fix Memory Leak in Analytics Canvas',
+          desc: 'Properly destroy previous Chart.js instances before redraw.',
+          priority: 'HIGH',
+          category: 'Bugfix',
+          status: 'COMPLETED',
+          createdAt: new Date().toISOString()
+        }
+      ];
+
+      let tasks = loadData(STORAGE_KEY_TASKS, defaultTasks);
+      let activityLogs = loadData(STORAGE_KEY_LOGS, []);
+      let chartInstance = null;
+
+      function loadData(key, fallback) {
+        const data = localStorage.getItem(key);
+        if (!data) return fallback;
+        try {
+          return JSON.parse(data);
+        } catch (e) {
+          return fallback;
+        }
+      }
+
+      function saveData(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+
+      // THEME LOGIC
+      function initTheme() {
+        const theme = localStorage.getItem(STORAGE_KEY_THEME) || 'dark';
+        if (theme === 'dark') $('html').addClass('dark');
+        else $('html').removeClass('dark');
+      }
+
+      $('#btn-toggle-theme').on('click', function () {
+        $('html').toggleClass('dark');
+        const isDark = $('html').hasClass('dark');
+        localStorage.setItem(STORAGE_KEY_THEME, isDark ? 'dark' : 'light');
+        addLog(`Switched theme mode to ${isDark ? 'Dark' : 'Light'}`);
+        showToast('Theme Changed', `Workspace set to ${isDark ? 'Dark' : 'Light'} mode`, 'info');
+      });
+
+      // REAL-TIME CLOCK ENGINE
+      function startClock() {
+        setInterval(() => {
+          const now = new Date();
+          $('#header-clock-date').text(now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
+          $('#header-clock-time').text(now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        }, 1000);
+      }
+
+      // AJAX INTEGRATION 1: Quotable/DummyJSON API via jQuery $.ajax
+      function fetchInspirationalQuote() {
+        $('#quote-spinner').removeClass('hidden').fadeIn(150);
+
+        $.ajax({
+          url: 'https://dummyjson.com/quotes/random',
+          method: 'GET',
+          timeout: 5000,
+          success: function (res) {
+            $('#quote-text').text(`"${res.quote}"`);
+            $('#quote-author').text(`— ${res.author}`);
+            addLog('Fetched updated quote via API');
+          },
+          error: function () {
+            $('#quote-text').text('"Simplicity is prerequisite for reliability."');
+            $('#quote-author').text('— Edsger W. Dijkstra');
+          },
+          complete: function () {
+            $('#quote-spinner').fadeOut(200, function () { $(this).addClass('hidden'); });
+          }
+        });
+      }
+
+      // AJAX INTEGRATION 2: OpenMeteo Weather API via jQuery $.getJSON
+      function fetchWeather() {
+        const url = 'https://api.open-meteo.com/v1/forecast?latitude=18.5204&longitude=73.8567&current_weather=true';
+
+        $.getJSON(url)
+          .done(function (data) {
+            if (data && data.current_weather) {
+              const temp = Math.round(data.current_weather.temperature);
+              $('#weather-temp').text(`${temp}°C`);
+              $('#weather-desc').text('Live Forecast');
+            }
+          })
+          .fail(function () {
+            $('#weather-temp').text('24°C');
+            $('#weather-desc').text('Offline Mode');
+          });
+      }
+
+      // AJAX INTEGRATION 3: Dynamic Tech Feed with fallback simulation
+      function fetchTechFeed() {
+        const $container = $('#tech-news-list');
+        
+        // Dynamic simulated endpoint data fallback
+        const mockFeed = [
+          { title: 'jQuery 3.7.1 performance optimizations released', tag: 'JS' },
+          { title: 'Designing resilient frontend architecture in 2026', tag: 'Web' },
+          { title: 'Browser local storage vs IndexedDB benchmarks', tag: 'Data' }
+        ];
+
+        $.ajax({
+          url: 'https://jsonplaceholder.typicode.com/posts?_limit=3',
+          method: 'GET',
+          timeout: 4000,
+          success: function (posts) {
+            $container.empty();
+            posts.forEach((p, idx) => {
+              $container.append(`
+                <div class="p-2.5 rounded-xl bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-100 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 hover:border-blue-500/50 transition-colors">
+                  <div class="flex items-center justify-between text-[10px] text-blue-400 font-bold mb-1">
+                    <span>FEED ITEM #${p.id}</span>
+                    <span class="bg-blue-500/10 px-1.5 py-0.5 rounded">TECH</span>
+                  </div>
+                  <p class="text-slate-200 dark:text-slate-200 [&:not(.dark)]:text-slate-800 font-medium capitalize line-clamp-1">${p.title}</p>
+                </div>
+              `);
+            });
+          },
+          error: function () {
+            $container.empty();
+            mockFeed.forEach(item => {
+              $container.append(`
+                <div class="p-2.5 rounded-xl bg-slate-950 dark:bg-slate-950 [&:not(.dark)]:bg-slate-100 border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200">
+                  <div class="flex items-center justify-between text-[10px] text-blue-400 font-bold mb-1">
+                    <span>${item.tag}</span>
+                  </div>
+                  <p class="text-slate-200 dark:text-slate-200 [&:not(.dark)]:text-slate-800 font-medium line-clamp-1">${item.title}</p>
+                </div>
+              `);
+            });
+          }
+        });
+      }
+
+      // KANBAN RENDERER & DOM MANIPULATION
+      function renderBoard() {
+        const query = $('#filter-search').val().toLowerCase().trim();
+        const priorityFilter = $('#filter-priority').val();
+        const categoryFilter = $('#filter-category').val();
+
+        // Clear existing card elements
+        $('#column-todo, #column-progress, #column-completed').empty();
+
+        const filtered = tasks.filter(t => {
+          const matchSearch = t.title.toLowerCase().includes(query) || (t.desc && t.desc.toLowerCase().includes(query));
+          const matchPriority = priorityFilter === 'ALL' || t.priority === priorityFilter;
+          const matchCategory = categoryFilter === 'ALL' || t.category === categoryFilter;
+          return matchSearch && matchPriority && matchCategory;
+        });
+
+        // Track column counts
+        let counts = { TODO: 0, IN_PROGRESS: 0, COMPLETED: 0 };
+
+        filtered.forEach(task => {
+          counts[task.status] = (counts[task.status] || 0) + 1;
+          const $card = createCardElement(task);
+
+          if (task.status === 'TODO') $('#column-todo').append($card);
+          else if (task.status === 'IN_PROGRESS') $('#column-progress').append($card);
+          else if (task.status === 'COMPLETED') $('#column-completed').append($card);
+        });
+
+        // Update counts badges
+        $('#badge-todo-count').text(counts.TODO);
+        $('#badge-progress-count').text(counts.IN_PROGRESS);
+        $('#badge-completed-count').text(counts.COMPLETED);
+
+        // Update metric summaries
+        $('#metric-total').text(tasks.length);
+        $('#metric-progress').text(tasks.filter(t => t.status === 'IN_PROGRESS').length);
+        $('#metric-completed').text(tasks.filter(t => t.status === 'COMPLETED').length);
+
+        updateChart();
+        initSortable();
+      }
+
+      function createCardElement(task) {
+        const priorityColors = {
+          HIGH: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+          MEDIUM: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+          LOW: 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+        };
+
+        return $(`
+          <div data-id="${task.id}" class="task-card bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 hover:border-slate-700 rounded-xl p-4 shadow-md transition-all cursor-grab active:cursor-grabbing">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${priorityColors[task.priority]}">
+                ${task.priority}
+              </span>
+              <div class="flex items-center gap-1 text-slate-400">
+                <button class="btn-edit-task p-1 hover:text-blue-400 rounded transition-colors" title="Edit">
+                  <i class="fa-solid fa-pen-to-square text-xs"></i>
+                </button>
+                <button class="btn-delete-task p-1 hover:text-rose-400 rounded transition-colors" title="Delete">
+                  <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+              </div>
+            </div>
+
+            <h4 class="text-xs sm:text-sm font-bold text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-900 mb-1">${escapeHTML(task.title)}</h4>
+            ${task.desc ? `<p class="text-[11px] text-slate-400 [&:not(.dark)]:text-slate-600 line-clamp-2 mb-3">${escapeHTML(task.desc)}</p>` : ''}
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800 dark:border-slate-800 [&:not(.dark)]:border-slate-200 text-[10px] text-slate-400">
+              <span class="bg-slate-800 dark:bg-slate-800 [&:not(.dark)]:bg-slate-100 px-2 py-0.5 rounded text-slate-300 [&:not(.dark)]:text-slate-700 font-medium">${task.category}</span>
+              <i class="fa-solid fa-grip-vertical text-slate-600"></i>
+            </div>
+          </div>
+        `);
+      }
+
+      // JQUERY UI DRAG AND DROP REORDERING
+      function initSortable() {
+        $('.kanban-column').sortable({
+          connectWith: '.kanban-column',
+          placeholder: 'ui-sortable-placeholder',
+          cursor: 'grabbing',
+          start: function (e, ui) {
+            ui.item.addClass('task-card-dragging');
+          },
+          stop: function (e, ui) {
+            ui.item.removeClass('task-card-dragging');
+            const taskId = ui.item.attr('data-id');
+            const newStatus = ui.item.parent().attr('data-status');
+
+            const task = tasks.find(t => t.id === taskId);
+            if (task && task.status !== newStatus) {
+              const oldStatus = task.status;
+              task.status = newStatus;
+              saveData(STORAGE_KEY_TASKS, tasks);
+              addLog(`Moved task "${task.title}" from ${oldStatus} to ${newStatus}`);
+              showToast('Task Relocated', `Status updated to ${newStatus}`, 'success');
+              renderBoard();
+            }
+          }
+        }).disableSelection();
+      }
+
+      // CHART ANALYTICS INTEGRATION
+      function updateChart() {
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+
+        const todoCount = tasks.filter(t => t.status === 'TODO').length;
+        const progressCount = tasks.filter(t => t.status === 'IN_PROGRESS').length;
+        const completedCount = tasks.filter(t => t.status === 'COMPLETED').length;
+
+        if (chartInstance) {
+          chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['To Do', 'In Progress', 'Completed'],
+            datasets: [{
+              data: [todoCount, progressCount, completedCount],
+              backgroundColor: ['#94a3b8', '#f59e0b', '#10b981'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: $('html').hasClass('dark') ? '#cbd5e1' : '#334155',
+                  font: { family: 'Plus Jakarta Sans', size: 11 }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // LOG ENGINE
+      function addLog(text) {
+        const time = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        activityLogs.unshift({ time, text });
+        if (activityLogs.length > 20) activityLogs.pop();
+        saveData(STORAGE_KEY_LOGS, activityLogs);
+        renderLogs();
+      }
+
+      function renderLogs() {
+        const $list = $('#activity-log-list');
+        $list.empty();
+        if (activityLogs.length === 0) {
+          $list.append('<div class="text-slate-500 italic">No activity recorded yet.</div>');
+          return;
+        }
+        activityLogs.forEach(log => {
+          $list.append(`
+            <div class="flex items-center gap-2 text-slate-300 dark:text-slate-300 [&:not(.dark)]:text-slate-700">
+              <span class="text-blue-400 font-bold">[${log.time}]</span>
+              <span>${escapeHTML(log.text)}</span>
+            </div>
+          `);
+        });
+      }
+
+      $('#btn-clear-log').on('click', function () {
+        activityLogs = [];
+        saveData(STORAGE_KEY_LOGS, activityLogs);
+        renderLogs();
+      });
+
+      // MODAL EVENT HANDLERS
+      function openModal(taskId = null) {
+        $('#task-form')[0].reset();
+        $('#form-task-id').val('');
+
+        if (taskId) {
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            $('#form-task-id').val(task.id);
+            $('#form-title').val(task.title);
+            $('#form-desc').val(task.desc || '');
+            $('#form-priority').val(task.priority);
+            $('#form-category').val(task.category);
+            $('#form-status').val(task.status);
+            $('#modal-task-title span').text('Edit Task');
+          }
+        } else {
+          $('#modal-task-title span').text('Create New Task');
+        }
+
+        $('#task-modal').removeClass('opacity-0 pointer-events-none');
+        $('#task-modal-box').removeClass('scale-95').addClass('scale-100');
+      }
+
+      function closeModal() {
+        $('#task-modal-box').removeClass('scale-100').addClass('scale-95');
+        $('#task-modal').addClass('opacity-0 pointer-events-none');
+      }
+
+      $('#btn-open-create-modal').on('click', function () { openModal(); });
+      $('#btn-close-modal, #btn-cancel-modal').on('click', closeModal);
+
+      // TASK FORM SUBMISSION
+      $('#task-form').on('submit', function (e) {
+        e.preventDefault();
+
+        const id = $('#form-task-id').val() || String(Date.now());
+        const newTask = {
+          id,
+          title: $('#form-title').val().trim(),
+          desc: $('#form-desc').val().trim(),
+          priority: $('#form-priority').val(),
+          category: $('#form-category').val(),
+          status: $('#form-status').val(),
+          createdAt: new Date().toISOString()
+        };
+
+        const existingIdx = tasks.findIndex(t => t.id === id);
+        if (existingIdx > -1) {
+          tasks[existingIdx] = newTask;
+          addLog(`Updated task "${newTask.title}"`);
+          showToast('Task Updated', `Saved changes to "${newTask.title}"`, 'success');
+        } else {
+          tasks.push(newTask);
+          addLog(`Created new task "${newTask.title}"`);
+          showToast('Task Created', `Added "${newTask.title}" to board`, 'success');
+        }
+
+        saveData(STORAGE_KEY_TASKS, tasks);
+        renderBoard();
+        closeModal();
+      });
+
+      // EVENT DELEGATION FOR EDIT & DELETE
+      $(document).on('click', '.btn-edit-task', function (e) {
+        e.stopPropagation();
+        const id = $(this).closest('.task-card').attr('data-id');
+        openModal(id);
+      });
+
+      $(document).on('click', '.btn-delete-task', function (e) {
+        e.stopPropagation();
+        const $card = $(this).closest('.task-card');
+        const id = $card.attr('data-id');
+        const task = tasks.find(t => t.id === id);
+
+        if (task) {
+          $card.fadeOut(200, function () {
+            tasks = tasks.filter(t => t.id !== id);
+            saveData(STORAGE_KEY_TASKS, tasks);
+            addLog(`Deleted task "${task.title}"`);
+            showToast('Task Deleted', `Removed "${task.title}"`, 'warning');
+            renderBoard();
+          });
+        }
+      });
+
+      // SEARCH AND FILTERS
+      $('#filter-search').on('keyup input', renderBoard);
+      $('#filter-priority, #filter-category').on('change', renderBoard);
+
+      $('#btn-reset-filters').on('click', function () {
+        $('#filter-search').val('');
+        $('#filter-priority').val('ALL');
+        $('#filter-category').val('ALL');
+        renderBoard();
+        showToast('Filters Cleared', 'Displaying all tasks', 'info');
+      });
+
+      // EXPORT DATA TO JSON FILE
+      $('#btn-export-data').on('click', function () {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
+        const anchor = document.createElement('a');
+        anchor.setAttribute("href", dataStr);
+        anchor.setAttribute("download", `pulsehub_tasks_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        showToast('Data Exported', 'Backup downloaded successfully', 'success');
+      });
+
+      // REFRESH BUTTON HANDLERS
+      $('#btn-fetch-quote').on('click', fetchInspirationalQuote);
+      $('#btn-refresh-weather').on('click', fetchWeather);
+      $('#btn-fetch-news').on('click', fetchTechFeed);
+
+      // TOAST SYSTEM
+      function showToast(title, message, type = 'info') {
+        const colors = {
+          success: 'border-emerald-500/50 text-emerald-400 fa-circle-check',
+          warning: 'border-amber-500/50 text-amber-400 fa-triangle-exclamation',
+          info: 'border-blue-500/50 text-blue-400 fa-circle-info'
+        };
+
+        const $toast = $(`
+          <div class="pointer-events-auto flex items-start gap-3 bg-slate-900 dark:bg-slate-900 [&:not(.dark)]:bg-white border ${colors[type].split(' ')[0]} p-4 rounded-xl shadow-2xl text-slate-100 dark:text-slate-100 [&:not(.dark)]:text-slate-800 transform translate-y-4 opacity-0 transition-all duration-300">
+            <i class="fa-solid ${colors[type].split(' ')[2]} text-base mt-0.5"></i>
+            <div class="flex-1">
+              <h5 class="text-xs font-bold">${title}</h5>
+              <p class="text-[11px] text-slate-400 [&:not(.dark)]:text-slate-600 mt-0.5">${message}</p>
+            </div>
+          </div>
+        `);
+
+        $('#toast-container').append($toast);
+        setTimeout(() => $toast.removeClass('translate-y-4 opacity-0'), 10);
+        setTimeout(() => {
+          $toast.addClass('opacity-0 translate-y-2');
+          setTimeout(() => $toast.remove(), 250);
+        }, 3500);
+      }
+
+      function escapeHTML(str) {
+        return (str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+      }
+
+      // INITIALIZE APP
+      initTheme();
+      startClock();
+      renderLogs();
+      renderBoard();
+      fetchInspirationalQuote();
+      fetchWeather();
+      fetchTechFeed();
+    });
+  </script>
+</body>
+</html>
